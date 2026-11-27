@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#4f46e5" />
+  <link rel="manifest" href="/eduaudit/manifest.webmanifest" />
+  <title>EduAudit — Мектепішілік бақылау</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+    .app-shell {
+      max-width: 520px;
+      margin: 0 auto;
+      min-height: 100vh;
+      background: #f8fafc;
+      box-shadow: 0 10px 35px rgba(15, 23, 42, 0.08);
+      padding-bottom: 84px;
+    }
+    .score-pill {
+      transition: all 0.15s ease;
+    }
+    .score-pill.active-0 { background: #ef4444; color: #fff; border-color: #ef4444; }
+    .score-pill.active-1 { background: #f59e0b; color: #fff; border-color: #f59e0b; }
+    .score-pill.active-2 { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+    .score-pill.active-3 { background: #10b981; color: #fff; border-color: #10b981; }
+    .pm-btn.active-plus { background: #10b981; color: #fff; border-color: #10b981; }
+    .pm-btn.active-minus { background: #ef4444; color: #fff; border-color: #ef4444; }
+    canvas.sig-pad {
+      touch-action: none;
+      background: #ffffff;
+      border: 1.5px dashed #94a3b8;
+      border-radius: 12px;
+      width: 100%;
+      height: 130px;
+      display: block;
+    }
+    @media print {
+      body { background: #fff; }
+      .app-shell { max-width: 100%; box-shadow: none; padding-bottom: 0; }
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <!-- Header -->
+  <header class="bg-indigo-600 text-white px-4 py-4 rounded-b-2xl shadow-md no-print">
+    <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center font-bold text-lg">E</div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <h1 class="font-bold text-lg leading-tight">EduAudit</h1>
+            <span class="text-[10px] font-semibold bg-white/20 px-1.5 py-0.5 rounded">МШБ</span>
+          </div>
+          <p class="text-xs text-indigo-100">Цифрлық сабақ бақылау парағы</p>
+        </div>
+      </div>
+      <button id="installBtn" onclick="triggerInstall()" class="bg-white/15 hover:bg-white/25 text-white text-xs font-medium px-3 py-2 rounded-xl border border-white/20">
+        Телефоныма орнату
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="p-4">
+    <!-- TAB 1: HOME -->
+    <section id="tab-home" class="space-y-4">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">Орта білім беру ұйымы</span>
+          <span class="text-xs font-bold text-slate-400">2026</span>
+        </div>
+        <h2 class="text-base font-bold text-slate-800">Қайырлы күн, Әкімшілік!</h2>
+        <p class="text-xs text-slate-500 mt-0.5">Жаңа бекітілген 33 критерийлік (max 99 балл) бақылау парағы бойынша сабақты талдау.</p>
+        <button onclick="switchTab('observe')" class="mt-3 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm py-3 rounded-xl shadow-sm">
+          + Жаңа сабаққа қатысу
+        </button>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2.5">
+        <div class="bg-white p-3 rounded-2xl border border-slate-100 text-center shadow-sm">
+          <div id="stat-count" class="text-xl font-bold text-slate-800">0</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">Қатысқан сабақ</div>
+        </div>
+        <div class="bg-white p-3 rounded-2xl border border-slate-100 text-center shadow-sm">
+          <div id="stat-avg" class="text-xl font-bold text-emerald-600">0%</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">Орташа сапа</div>
+        </div>
+        <div class="bg-white p-3 rounded-2xl border border-slate-100 text-center shadow-sm">
+          <div id="stat-max" class="text-xl font-bold text-indigo-600">0/99</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">Орташа балл</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Соңғы тексерілген сабақтар</h3>
+          <button onclick="switchTab('reports')" class="text-xs font-semibold text-indigo-600">Барлығы →</button>
+        </div>
+        <div id="recent-list" class="space-y-2.5"></div>
+      </div>
+    </section>
+
+    <!-- TAB 2: OBSERVATION FORM -->
+    <section id="tab-observe" class="hidden space-y-4">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-slate-800">Сабақты бақылау парағы</h2>
+          <button type="button" onclick="fillDemoLesson()" class="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2.5 py-1 rounded-lg">
+            Демо толтыру
+          </button>
+        </div>
+
+        <div class="space-y-2.5 text-xs">
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">Білім беру ұйымы</label>
+            <input id="f-school" type="text" placeholder="Мысалы: №1 мектеп-гимназиясы" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-semibold text-slate-600 mb-1">Педагогтің ТАӘ</label>
+              <input id="f-teacher" type="text" placeholder="Аты-жөні" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-600 mb-1">Педагогтің лауазымы, біліктілік санаты</label>
+              <input id="f-teacher-cat" type="text" placeholder="Пән мұғалімі, педагог-зерттеуші" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-semibold text-slate-600 mb-1">Бақылаушының ТАӘ</label>
+              <input id="f-observer" type="text" placeholder="Бақылаушының аты-жөні" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-600 mb-1">Бақылаушының лауазымы</label>
+              <select id="f-observer-role" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white">
+                <option value="Мектеп директоры">Мектеп директоры</option>
+                <option value="Директордың оқу ісі жөніндегі орынбасары">Директордың оқу ісі жөніндегі орынбасары</option>
+                <option value="Директордың ақпараттандыру жөніндегі орынбасары">Директордың ақпараттандыру жөніндегі орынбасары</option>
+                <option value="Директордың бағдарлама (бейіндік оқыту) жөніндегі орынбасары">Директордың бағдарлама (бейіндік оқыту) жөніндегі орынбасары</option>
+                <option value="Директордың тәрбие ісі жөніндегі орынбасары">Директордың тәрбие ісі жөніндегі орынбасары</option>
+                <option value="Біліктілік жетекшісі (ӘБ жетекшісі)">Біліктілік жетекшісі (ӘБ жетекшісі)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-semibold text-slate-600 mb-1">Пән және сынып</label>
+              <input id="f-subject" type="text" placeholder="Информатика, 9 «Б»" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-600 mb-1">Бақылау күні</label>
+              <input id="f-date" type="date" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">Үлгілік оқу бағдарламасына сәйкес оқыту мақсаттары</label>
+            <textarea id="f-learning-obj" rows="2" placeholder="Оқу бағдарламасындағы мақсат коды мен тұжырымы" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"></textarea>
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">Сабақтың тақырыбы, мақсаттары</label>
+            <textarea id="f-topic" rows="2" placeholder="Сабақ тақырыбы және сабақ мақсаты" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sticky Score Bar -->
+      <div class="sticky top-2 z-20 bg-slate-900 text-white rounded-2xl px-4 py-3 shadow-lg flex items-center justify-between">
+        <div>
+          <div class="text-[11px] text-slate-300">Жиыны (max 99 балл)</div>
+          <div class="text-base font-bold"><span id="live-total">0</span> / 99 балл (<span id="live-pct">0</span>%)</div>
+        </div>
+        <div class="text-right text-xs">
+          <span class="bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-semibold">+ <span id="live-plus">0</span></span>
+          <span class="bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded font-semibold ml-1">− <span id="live-minus">0</span></span>
+        </div>
+      </div>
+
+      <!-- Criteria Container -->
+      <div id="criteria-container" class="space-y-3"></div>
+
+      <!-- Recommendations -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-2">
+        <label class="block text-xs font-bold text-slate-700">Ұсыныстар</label>
+        <textarea id="f-recommendations" rows="3" placeholder="Сабақ бойынша әдістемелік ұсыныстар мен қорытынды..." class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"></textarea>
+      </div>
+
+      <!-- E-Signatures Section ("Таныстым") -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-4">
+        <div class="border-b border-slate-100 pb-2">
+          <h3 class="text-sm font-bold text-slate-800">«Таныстым» — Электронды қолтаңба</h3>
+          <p class="text-xs text-slate-500">Саусақпен немесе тінтуірмен төмендегі өріске қол қойыңыз</p>
+        </div>
+
+        <!-- Observer Signature -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-700">1. Бақылаушының қолы</span>
+            <button type="button" onclick="clearSig('sig-observer')" class="text-xs text-rose-600 font-semibold">Тазалау</button>
+          </div>
+          <canvas id="sig-observer" class="sig-pad"></canvas>
+        </div>
+
+        <!-- Teacher Signature -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-700">2. Педагогтің қолы («Таныстым»)</span>
+            <button type="button" onclick="clearSig('sig-teacher')" class="text-xs text-rose-600 font-semibold">Тазалау</button>
+          </div>
+          <canvas id="sig-teacher" class="sig-pad"></canvas>
+        </div>
+      </div>
+
+      <button type="button" onclick="saveObservation()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-3.5 rounded-2xl shadow-md">
+        Бақылау парағын сақтау және бекіту
+      </button>
+    </section>
+
+    <!-- TAB 3: REPORTS / CERTIFICATE VIEW -->
+    <section id="tab-reports" class="hidden space-y-4">
+      <div class="flex items-center justify-between no-print">
+        <h2 class="text-sm font-bold text-slate-800">Анықтамалар мен хаттамалар</h2>
+        <button onclick="exportCSV()" class="text-xs bg-slate-800 text-white font-semibold px-3 py-1.5 rounded-xl">CSV жүктеу</button>
+      </div>
+      <div id="report-selector" class="space-y-2 no-print"></div>
+      <div id="report-preview" class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200"></div>
+    </section>
+
+    <!-- TAB 4: ANALYTICS -->
+    <section id="tab-analytics" class="hidden space-y-4">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+        <h2 class="text-sm font-bold text-slate-800 mb-3">Бөлімдер бойынша орташа көрсеткіш</h2>
+        <div id="analytics-bars" class="space-y-3"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="fixed bottom-0 left-0 right-0 max-w-[520px] mx-auto bg-white border-t border-slate-200 px-2 py-2 grid grid-cols-4 gap-1 z-30 no-print">
+    <button onclick="switchTab('home')" id="nav-home" class="nav-btn text-indigo-600 font-bold flex flex-col items-center py-1 text-[11px]">
+      <span>🏠</span><span>Басты бет</span>
+    </button>
+    <button onclick="switchTab('observe')" id="nav-observe" class="nav-btn text-slate-500 flex flex-col items-center py-1 text-[11px]">
+      <span>📝</span><span>Сабаққа кіру</span>
+    </button>
+    <button onclick="switchTab('reports')" id="nav-reports" class="nav-btn text-slate-500 flex flex-col items-center py-1 text-[11px]">
+      <span>📄</span><span>Анықтамалар</span>
+    </button>
+    <button onclick="switchTab('analytics')" id="nav-analytics" class="nav-btn text-slate-500 flex flex-col items-center py-1 text-[11px]">
+      <span>📊</span><span>Аналитика</span>
+    </button>
+  </nav>
+</div>
+
+<script>
+const RUBRIC_SECTIONS = [
+  {
+    code: "1",
+    title: "1. Жоспарлау",
+    items: [
+      { id: "c1", sub: "1.1. Сабақ мақсаттары", text: "Оқыту мақсаттарына (күтілетін нәтижелерге) сәйкес келеді" },
+      { id: "c2", sub: "1.1. Сабақ мақсаттары", text: "Нақты және барлық білім алушылар (тәрбиеленушілер) үшін қолжетімді" },
+      { id: "c3", sub: "1.1. Сабақ мақсаттары", text: "Сабақ белгіленген уақытта өткізіледі, регламент сақталады. Қатысушылардың белсенді қатысуына мүмкіндігі бар" },
+      { id: "c4", sub: "1.2. Оқыту әдістері және ресурстар", text: "Мақсатқа және күтілетін нәтижелерге сәйкес келеді" },
+      { id: "c5", sub: "1.2. Оқыту әдістері және ресурстар", text: "Жас ерекшеліктеріне сәйкес келеді" },
+      { id: "c6", sub: "1.2. Оқыту әдістері және ресурстар", text: "Білім беру қажеттіліктеріне сәйкес келеді" },
+      { id: "c7", sub: "1.3. Бағалау әдістері, құралдары", text: "Мақсатқа және күтілетін нәтижелерге сәйкес келеді" },
+      { id: "c8", sub: "1.3. Бағалау әдістері, құралдары", text: "Жас ерекшеліктеріне сәйкес келеді" },
+      { id: "c9", sub: "1.3. Бағалау әдістері, құралдары", text: "Сабақтың барлық кезеңдерінде білім алушыларды өзін-өзі бағалау процесіне тарту жоспарланады" }
+    ]
+  },
+  {
+    code: "2",
+    title: "2. Оқыту (ұйымдастыру, өткізу)",
+    items: [
+      { id: "c10", sub: "2.1. Функционалдық сауаттылық", text: "Терминдер мен ұғымдарды жүйелі және өзара байланысты меңгеру көрініс табады" },
+      { id: "c11", sub: "2.1. Функционалдық сауаттылық", text: "Әртүрлі дереккөздерден ақпаратты іздеу, алу және түсіндіру дағдыларын дамытуға бағытталған тапсырмалар қолданылады" },
+      { id: "c12", sub: "2.1. Функционалдық сауаттылық", text: "Білім алушылар материалды практикалық қолдану тәсілдерін анықтауға тартылады" },
+      { id: "c13", sub: "2.2. Цифрлық білім беру ресурстары", text: "ЦБР жеке қажеттіліктерді ескере отырып пайдаланылады" },
+      { id: "c14", sub: "2.3. Оқыту әдістері және саралау", text: "Оқыту әдістері білім алушылардың өзара әрекеттесуіне ықпал етеді" },
+      { id: "c15", sub: "2.3. Оқыту әдістері және саралау", text: "Білім беру қажеттіліктері мен жеке ерекшеліктері ескеріледі" },
+      { id: "c16", sub: "2.3. Оқыту әдістері және саралау", text: "Тапсырмалар мен ресурстарды саралау білім беру қажеттіліктеріне сәйкес келеді" },
+      { id: "c17", sub: "2.3. Оқыту әдістері және саралау", text: "Сабақтың барлық кезеңдерінде танымдық қызығушылықты арттыру тәсілдерін қолданады" },
+      { id: "c18", sub: "2.4. Сабақ құрылымы және уақыт", text: "Сабақтың құрылымы сақталады, педагог қажеттіліктерге сәйкес икемді әрекет етеді" },
+      { id: "c19", sub: "2.4. Сабақ құрылымы және уақыт", text: "Уақыт ұтымды бөлінеді (тайм-менеджмент сақталады)" },
+      { id: "c20", sub: "2.4. Сабақ құрылымы және уақыт", text: "Барлық білім алушылардың сабаққа қатысуы қамтамасыз етіледі" },
+      { id: "c21", sub: "2.4. Сабақ құрылымы және уақыт", text: "Педагог пен білім алушылардың сауатты сөйлеу теңгерімі сақталады" },
+      { id: "c22", sub: "2.5. Өзара әрекеттесуді ұйымдастыру", text: "Өзара әрекеттесудің әртүрлі формаларын қолдануда теңгерім сақталады (топтық жұмыста рөлдер бөлінеді)" },
+      { id: "c23", sub: "2.5. Өзара әрекеттесуді ұйымдастыру", text: "Білім алушылар талқылауларға белсенді қатысады" },
+      { id: "c24", sub: "2.6. «Адал азамат» тәрбие бағдарламасы", text: "Білімді қоғамның, экологияның және елдің дамуымен байланыстыра отырып, оқуының әлеуметтік маңыздылығын сезінеді" },
+      { id: "c25", sub: "2.6. «Адал азамат» тәрбие бағдарламасы", text: "Саналы тәртіпті көрсетеді, кешікпейді, дресс-кодты сақтайды, жеке шекараларды құрметтейді" },
+      { id: "c26", sub: "2.6. «Адал азамат» тәрбие бағдарламасы", text: "Тапсырмаларды орындау кезінде академиялық адалдықты қамтамасыз ете отырып, «Еңбегі адал» қағидаты сақталады" },
+      { id: "c27", sub: "2.6. «Адал азамат» тәрбие бағдарламасы", text: "Мемлекеттік рәміздерге, тілге және ұлттық дәстүрлерге терең құрмет көрсетеді" }
+    ]
+  },
+  {
+    code: "3",
+    title: "3. Бағалау (мониторинг)",
+    items: [
+      { id: "c28", sub: "3.1. Бағалау әдістерін қолдану", text: "Бағалау әдістері, құралдары мақсаттар мен күтілетін нәтижелерге қол жеткізуге ықпал етеді" },
+      { id: "c29", sub: "3.1. Бағалау әдістерін қолдану", text: "Уақтылы кері байланыс, дағдыларды дамыту бойынша ұсынымдар беріледі" },
+      { id: "c30", sub: "3.1. Бағалау әдістерін қолдану", text: "Сабақтың барлық кезеңдерінде өзін-өзі бағалауға мүмкіндік береді" },
+      { id: "c31", sub: "3.1. Бағалау әдістерін қолдану", text: "Рефлексия сабақтың мақсаттары мен күтілетін нәтижелеріне сәйкес келеді, дағдыларды дамыту жоспарланады" }
+    ]
+  },
+  {
+    code: "4",
+    title: "4. Рефлексия",
+    items: [
+      { id: "c32", sub: "4.1. Сабақ бойынша рефлексия", text: "Сабақты бағалау білім алушылардың мақсаттарға (күтілетін нәтижелерге) қол жеткізуі негізінде жүргізіледі" },
+      { id: "c33", sub: "4.2. Практиканы дамыту", text: "Сабақ сапасын бағалау негізінде практиканы дамыту бойынша бағыттар мен нақты іс-әрекеттер айқындалады" }
+    ]
+  }
+];
+
+let currentScores = {};
+let currentMarks = {};
+let observations = JSON.parse(localStorage.getItem("eduaudit_v2_records") || "[]");
+let selectedReportIndex = 0;
+let deferredPrompt = null;
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+});
+
+function triggerInstall() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt = null;
+  } else {
+    alert("Chrome браузерінің оң жақ жоғарғы бұрышындағы үш нүктені (⋮) басып, «Қолданбаны орнату» (Установить приложение) тармағын таңдаңыз.");
+  }
+}
+
+function renderCriteriaForm() {
+  const container = document.getElementById("criteria-container");
+  container.innerHTML = "";
+  RUBRIC_SECTIONS.forEach(sec => {
+    const card = document.createElement("div");
+    card.className = "bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3";
+    let html = `<h3 class="text-sm font-bold text-indigo-700 border-b border-slate-100 pb-2">${sec.title}</h3>`;
+    sec.items.forEach((item, idx) => {
+      if (currentScores[item.id] === undefined) currentScores[item.id] = 2;
+      if (currentMarks[item.id] === undefined) currentMarks[item.id] = "+";
+      html += `
+        <div class="pb-3 border-b border-slate-100 last:border-b-0 last:pb-0 space-y-2">
+          <div class="text-[11px] font-semibold text-slate-400">${item.sub}</div>
+          <div class="text-xs text-slate-800 leading-relaxed">${item.text}</div>
+          <div class="flex items-center justify-between gap-2 pt-1">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[11px] text-slate-500 mr-1">Деңгей:</span>
+              ${[0,1,2,3].map(lvl => `
+                <button type="button" id="lvl-${item.id}-${lvl}" onclick="setScore('${item.id}', ${lvl})"
+                  class="score-pill w-8 h-8 rounded-lg border border-slate-200 text-xs font-bold ${currentScores[item.id]===lvl ? 'active-'+lvl : 'bg-slate-50 text-slate-700'}">
+                  ${lvl}
+                </button>
+              `).join("")}
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button type="button" id="pm-${item.id}-plus" onclick="setMark('${item.id}', '+')"
+                class="pm-btn w-9 h-8 rounded-lg border border-slate-200 text-sm font-bold ${currentMarks[item.id]==='+' ? 'active-plus' : 'bg-slate-50 text-slate-600'}">
+                +
+              </button>
+              <button type="button" id="pm-${item.id}-minus" onclick="setMark('${item.id}', '-')"
+                class="pm-btn w-9 h-8 rounded-lg border border-slate-200 text-sm font-bold ${currentMarks[item.id]==='-' ? 'active-minus' : 'bg-slate-50 text-slate-600'}">
+                −
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    card.innerHTML = html;
+    container.appendChild(card);
+  });
+  recalcTotals();
+}
+
+function setScore(id, val) {
+  currentScores[id] = val;
+  if (val >= 2) currentMarks[id] = "+";
+  if (val === 0) currentMarks[id] = "-";
+  [0,1,2,3].forEach(lvl => {
+    const btn = document.getElementById(`lvl-${id}-${lvl}`);
+    btn.className = `score-pill w-8 h-8 rounded-lg border border-slate-200 text-xs font-bold ${val===lvl ? 'active-'+lvl : 'bg-slate-50 text-slate-700'}`;
+  });
+  updateMarkUI(id);
+  recalcTotals();
+}
+
+function setMark(id, mark) {
+  currentMarks[id] = mark;
+  updateMarkUI(id);
+  recalcTotals();
+}
+
+function updateMarkUI(id) {
+  const m = currentMarks[id];
+  document.getElementById(`pm-${id}-plus`).className = `pm-btn w-9 h-8 rounded-lg border border-slate-200 text-sm font-bold ${m==='+' ? 'active-plus' : 'bg-slate-50 text-slate-600'}`;
+  document.getElementById(`pm-${id}-minus`).className = `pm-btn w-9 h-8 rounded-lg border border-slate-200 text-sm font-bold ${m==='-' ? 'active-minus' : 'bg-slate-50 text-slate-600'}`;
+}
+
+function recalcTotals() {
+  const vals = Object.values(currentScores);
+  const total = vals.reduce((a, b) => a + b, 0);
+  const pct = Math.round((total / 99) * 100);
+  const plusCount = Object.values(currentMarks).filter(x => x === "+").length;
+  const minusCount = Object.values(currentMarks).filter(x => x === "-").length;
+  document.getElementById("live-total").textContent = total;
+  document.getElementById("live-pct").textContent = pct;
+  document.getElementById("live-plus").textContent = plusCount;
+  document.getElementById("live-minus").textContent = minusCount;
+}
+
+// Signature Pads
+const sigState = {};
+function initSignaturePad(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext("2d");
+  const ratio = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = (rect.width || 440) * ratio;
+  canvas.height = 130 * ratio;
+  ctx.scale(ratio, ratio);
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "#1e293b";
+
+  sigState[canvasId] = { drawing: false, signed: false, ctx, canvas };
+
+  const getPos = (e) => {
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX - r.left, y: t.clientY - r.top };
+  };
+
+  const start = (e) => {
+    e.preventDefault();
+    sigState[canvasId].drawing = true;
+    sigState[canvasId].signed = true;
+    const p = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  };
+  const move = (e) => {
+    if (!sigState[canvasId].drawing) return;
+    e.preventDefault();
+    const p = getPos(e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  };
+  const end = () => { sigState[canvasId].drawing = false; };
+
+  canvas.addEventListener("mousedown", start);
+  canvas.addEventListener("mousemove", move);
+  window.addEventListener("mouseup", end);
+  canvas.addEventListener("touchstart", start, { passive: false });
+  canvas.addEventListener("touchmove", move, { passive: false });
+  canvas.addEventListener("touchend", end);
+}
+
+function clearSig(canvasId) {
+  const s = sigState[canvasId];
+  if (!s) return;
+  s.ctx.clearRect(0, 0, s.canvas.width, s.canvas.height);
+  s.signed = false;
+}
+
+function getSigData(canvasId) {
+  const s = sigState[canvasId];
+  if (!s || !s.signed) return "";
+  return s.canvas.toDataURL("image/png");
+}
+
+function fillDemoLesson() {
+  document.getElementById("f-school").value = "№1 мектеп-гимназиясы";
+  document.getElementById("f-teacher").value = "Нұрланов Ержан Талғатұлы";
+  document.getElementById("f-teacher-cat").value = "Информатика пәні мұғалімі, педагог-зерттеуші";
+  document.getElementById("f-observer").value = "Балкенова Айжан Арыстановна";
+  document.getElementById("f-observer-role").value = "Директордың ақпараттандыру жөніндегі орынбасары";
+  document.getElementById("f-subject").value = "Информатика, 9 «Б» сынып";
+  document.getElementById("f-date").value = new Date().toISOString().slice(0, 10);
+  document.getElementById("f-learning-obj").value = "9.3.1.1 – Жасанды интеллект және нейрондық желілердің қолданылу салаларын сипаттау";
+  document.getElementById("f-topic").value = "Жасанды интеллект және нейрондық желілер. Мақсаты: ЖИ құралдарын тәжірибеде қолдану.";
+  document.getElementById("f-recommendations").value = "Сабақта цифрлық білім беру ресурстары мен функционалдық сауаттылық тапсырмалары жүйелі қолданылды. Өзін-өзі бағалау кезеңінде уақыт регламентін нақтылау ұсынылады.";
+  RUBRIC_SECTIONS.forEach(s => s.items.forEach((it, i) => {
+    setScore(it.id, i % 4 === 0 ? 2 : 3);
+  }));
+}
+
+function saveObservation() {
+  const teacher = document.getElementById("f-teacher").value.trim() || "Аты-жөні көрсетілмеген";
+  const vals = Object.values(currentScores);
+  const total = vals.reduce((a, b) => a + b, 0);
+  const pct = Math.round((total / 99) * 100);
+
+  const record = {
+    id: Date.now(),
+    school: document.getElementById("f-school").value.trim() || "Орта білім беру ұйымы",
+    teacher,
+    teacherCat: document.getElementById("f-teacher-cat").value.trim(),
+    observer: document.getElementById("f-observer").value.trim(),
+    observerRole: document.getElementById("f-observer-role").value,
+    subject: document.getElementById("f-subject").value.trim() || "Пән",
+    date: document.getElementById("f-date").value || new Date().toISOString().slice(0, 10),
+    learningObj: document.getElementById("f-learning-obj").value.trim(),
+    topic: document.getElementById("f-topic").value.trim(),
+    recommendations: document.getElementById("f-recommendations").value.trim(),
+    scores: { ...currentScores },
+    marks: { ...currentMarks },
+    total,
+    pct,
+    sigObserver: getSigData("sig-observer"),
+    sigTeacher: getSigData("sig-teacher")
+  };
+
+  observations.unshift(record);
+  localStorage.setItem("eduaudit_v2_records", JSON.stringify(observations));
+  selectedReportIndex = 0;
+  renderDashboard();
+  switchTab("reports");
+}
+
+function renderDashboard() {
+  const count = observations.length;
+  const avgPct = count ? Math.round(observations.reduce((s, r) => s + r.pct, 0) / count) : 0;
+  const avgScore = count ? Math.round(observations.reduce((s, r) => s + r.total, 0) / count) : 0;
+
+  document.getElementById("stat-count").textContent = count;
+  document.getElementById("stat-avg").textContent = avgPct + "%";
+  document.getElementById("stat-max").textContent = avgScore + "/99";
+
+  const list = document.getElementById("recent-list");
+  if (!count) {
+    list.innerHTML = `<div class="bg-white rounded-2xl p-4 text-center text-xs text-slate-400 border border-slate-100">Әзірге сақталған бақылау парағы жоқ. «+ Жаңа сабаққа қатысу» батырмасын басыңыз.</div>`;
+    return;
+  }
+
+  list.innerHTML = observations.slice(0, 5).map((r, idx) => `
+    <div onclick="openReport(${idx})" class="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm flex items-center justify-between cursor-pointer">
+      <div>
+        <div class="text-[11px] font-semibold text-indigo-600">${r.subject} • ${r.date}</div>
+        <div class="text-sm font-bold text-slate-800">${r.teacher}</div>
+        <div class="text-[11px] text-slate-500">${r.observerRole}</div>
+      </div>
+      <div class="text-right">
+        <span class="inline-block bg-emerald-50 text-emerald-700 font-bold text-xs px-2.5 py-1 rounded-lg">${r.pct}%</span>
+        <div class="text-[11px] text-slate-400 mt-1">${r.total}/99</div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function openReport(idx) {
+  selectedReportIndex = idx;
+  switchTab("reports");
+}
+
+function renderReports() {
+  const sel = document.getElementById("report-selector");
+  const prev = document.getElementById("report-preview");
+
+  if (!observations.length) {
+    sel.innerHTML = "";
+    prev.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Анықтама жасау үшін алдымен «Сабаққа кіру» бөлімінде бақылау парағын толтырыңыз.</p>`;
+    return;
+  }
+
+  sel.innerHTML = `
+    <select onchange="selectedReportIndex=Number(this.value); renderReports()" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold bg-white">
+      ${observations.map((r, i) => `<option value="${i}" ${i===selectedReportIndex?'selected':''}>${r.date} — ${r.teacher} (${r.subject}, ${r.total}/99)</option>`).join("")}
+    </select>
+  `;
+
+  const r = observations[selectedReportIndex] || observations[0];
+  let rowsHtml = "";
+  RUBRIC_SECTIONS.forEach(sec => {
+    rowsHtml += `<tr class="bg-slate-100 font-bold"><td colspan="4" class="border border-slate-300 px-2 py-1.5 text-[11px]">${sec.title}</td></tr>`;
+    sec.items.forEach(it => {
+      const sc = r.scores[it.id] ?? 0;
+      const mk = r.marks[it.id] ?? "+";
+      rowsHtml += `
+        <tr>
+          <td class="border border-slate-300 px-2 py-1 text-[11px]">${it.text}</td>
+          <td class="border border-slate-300 px-1.5 py-1 text-center font-bold text-[11px]">${sc}</td>
+          <td class="border border-slate-300 px-1.5 py-1 text-center font-bold text-[11px] ${mk==='+'?'text-emerald-700':'text-rose-600'}">${mk}</td>
+        </tr>
+      `;
+    });
+  });
+
+  prev.innerHTML = `
+    <div class="space-y-3 text-xs text-slate-800">
+      <div class="flex items-center justify-between no-print">
+        <span class="text-[11px] font-semibold text-indigo-600">Ресми бақылау парағы</span>
+        <button onclick="window.print()" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Басып шығару / PDF</button>
+      </div>
+      <h3 class="text-center font-bold text-sm">Орта білім беру ұйымы педагогінің сабағын (оқу сабағын, іс-шарасын) бақылау парағы</h3>
+      <table class="w-full border-collapse border border-slate-300 text-[11px]">
+        <tr>
+          <td class="border border-slate-300 p-1.5 font-semibold bg-slate-50 w-1/3">Педагогтің ТАӘ:</td>
+          <td class="border border-slate-300 p-1.5">${r.teacher}</td>
+        </tr>
+        <tr>
+          <td class="border border-slate-300 p-1.5 font-semibold bg-slate-50">Лауазымы, санаты:</td>
+          <td class="border border-slate-300 p-1.5">${r.teacherCat || "—"}</td>
+        </tr>
+        <tr>
+          <td class="border border-slate-300 p-1.5 font-semibold bg-slate-50">Бақылаушының ТАӘ:</td>
+          <td class="border border-slate-300 p-1.5">${r.observer || "—"}</td>
+        </tr>
+        <tr>
+          <td class="border border-slate-300 p-1.5 font-semibold bg-slate-50">Бақылаушының лауазымы:</td>
+          <td class="border border-slate-300 p-1.5 font-semibold">${r.observerRole}</td>
+        </tr>
+        <tr>
+          <td class="border border-slate-300 p-1.5 font-semibold bg-slate-50">Пән / Ұйым / Күні:</td>
+          <td class="border border-slate-300 p-1.5">${r.subject} | ${r.school} | ${r.date}</td>
+        </tr>
+        <tr>
+          <td class="border border-slate-300 p-1.5 font-semibold bg-slate-50">Оқыту мақсаттары:</td>
+          <td class="border border-slate-300 p-1.5">${r.learningObj || "—"}</td>
+        </tr>
+        <tr>
+          <td class="border border-slate-300 p-1.5 font-semibold bg-slate-50">Сабақ тақырыбы:</td>
+          <td class="border border-slate-300 p-1.5">${r.topic || "—"}</td>
+        </tr>
+      </table>
+
+      <table class="w-full border-collapse border border-slate-300">
+        <thead>
+          <tr class="bg-indigo-50 text-[11px]">
+            <th class="border border-slate-300 p-1.5 text-left">Бағалау критерийлері</th>
+            <th class="border border-slate-300 p-1.5 w-12">Деңгей (0-3)</th>
+            <th class="border border-slate-300 p-1.5 w-10">+/−</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+        <tfoot>
+          <tr class="bg-slate-100 font-bold text-xs">
+            <td class="border border-slate-300 p-1.5">Жиыны (max 99 балл)</td>
+            <td class="border border-slate-300 p-1.5 text-center">${r.total}/99</td>
+            <td class="border border-slate-300 p-1.5 text-center">${r.pct}%</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div class="border border-slate-300 p-2 rounded">
+        <div class="font-bold mb-1">Ұсыныстар:</div>
+        <div>${r.recommendations || "—"}</div>
+      </div>
+
+      <div class="pt-2 space-y-3">
+        <div class="font-bold text-xs">«Таныстым»</div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="border border-slate-200 rounded-xl p-2 text-center">
+            <div class="text-[10px] text-slate-500 mb-1">Бақылаушының қолы (${r.observerRole})</div>
+            ${r.sigObserver ? `<img src="${r.sigObserver}" class="h-14 mx-auto object-contain" />` : `<div class="h-14 flex items-center justify-center text-slate-300 text-[11px]">Қол қойылмаған</div>`}
+            <div class="text-[11px] font-semibold mt-1">${r.observer || ""}</div>
+          </div>
+          <div class="border border-slate-200 rounded-xl p-2 text-center">
+            <div class="text-[10px] text-slate-500 mb-1">Педагогтің қолы</div>
+            ${r.sigTeacher ? `<img src="${r.sigTeacher}" class="h-14 mx-auto object-contain" />` : `<div class="h-14 flex items-center justify-center text-slate-300 text-[11px]">Қол қойылмаған</div>`}
+            <div class="text-[11px] font-semibold mt-1">${r.teacher}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderAnalytics() {
+  const box = document.getElementById("analytics-bars");
+  if (!observations.length) {
+    box.innerHTML = `<p class="text-xs text-slate-400">Аналитика шығару үшін кемінде 1 сабақ бақылауын сақтаңыз.</p>`;
+    return;
+  }
+  box.innerHTML = RUBRIC_SECTIONS.map(sec => {
+    const maxSec = sec.items.length * 3;
+    let sum = 0;
+    observations.forEach(r => {
+      sec.items.forEach(it => { sum += (r.scores[it.id] || 0); });
+    });
+    const avgSec = sum / observations.length;
+    const pct = Math.round((avgSec / maxSec) * 100);
+    return `
+      <div>
+        <div class="flex justify-between text-xs font-semibold mb-1">
+          <span>${sec.title}</span>
+          <span class="text-indigo-600">${pct}% (${avgSec.toFixed(1)}/${maxSec})</span>
+        </div>
+        <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+          <div class="bg-indigo-600 h-2.5 rounded-full" style="width:${pct}%"></div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function exportCSV() {
+  if (!observations.length) return;
+  const headers = ["Күні", "Ұйым", "Педагог", "Санаты", "Бақылаушы", "Лауазымы", "Пән", "Жалпы балл", "Сапа %"];
+  const rows = observations.map(r => [r.date, r.school, r.teacher, r.teacherCat, r.observer, r.observerRole, r.subject, r.total, r.pct]);
+  const csv = "﻿" + [headers, ...rows].map(e => e.map(v => `"${String(v||"").replace(/"/g,'""')}"`).join(",")).join("
+");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "eduaudit_monitoring.csv";
+  a.click();
+}
+
+function switchTab(tab) {
+  ["home", "observe", "reports", "analytics"].forEach(t => {
+    document.getElementById("tab-" + t).classList.toggle("hidden", t !== tab);
+    const nav = document.getElementById("nav-" + t);
+    nav.className = `nav-btn flex flex-col items-center py-1 text-[11px] ${t === tab ? "text-indigo-600 font-bold" : "text-slate-500"}`;
+  });
+  if (tab === "observe") {
+    setTimeout(() => {
+      if (!sigState["sig-observer"]) initSignaturePad("sig-observer");
+      if (!sigState["sig-teacher"]) initSignaturePad("sig-teacher");
+    }, 50);
+  }
+  if (tab === "reports") renderReports();
+  if (tab === "analytics") renderAnalytics();
+}
+
+document.getElementById("f-date").value = new Date().toISOString().slice(0, 10);
+renderCriteriaForm();
+renderDashboard();
+</script>
+</body>
+</html>
